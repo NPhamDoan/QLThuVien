@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 
 let db: Database.Database | null = null;
 
-export function initializeDatabase(dbPath: string = './dev.db'): Database.Database {
+export function initializeDatabase(dbPath: string = './Database/dev.db'): Database.Database {
   db = new Database(dbPath);
 
   db.pragma('foreign_keys = ON');

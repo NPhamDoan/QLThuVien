@@ -2,7 +2,7 @@ import { initializeDatabase } from './database';
 import bcrypt from 'bcrypt';
 
 async function seed() {
-  const db = initializeDatabase('./dev.db');
+  const db = initializeDatabase('./Database/dev.db');
 
   // Clear existing data (order matters for FK)
   db.exec('DELETE FROM PhieuMuon');

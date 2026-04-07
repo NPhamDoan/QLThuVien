@@ -1,17 +1,15 @@
 # Dependencies
 node_modules/
-frontend/node_modules/
 
 # Build output
 dist/
-frontend/dist/
 Deploy/
 tsconfig.tsbuildinfo
 
 # Database
-*.db
-*.db-shm
-*.db-wal
+backend/Database/*.db
+backend/Database/*.db-shm
+backend/Database/*.db-wal
 
 # IDE
 .vscode/

@@ -26,7 +26,7 @@ console.log('=== Building Library Management System ===\n');
 
 // 1. Build backend
 console.log('[1/4] Building backend...');
-run('npx tsc');
+run('npx tsc', path.join(__dirname, '..', 'backend'));
 
 // 2. Build frontend
 console.log('\n[2/4] Building frontend...');
@@ -47,7 +47,7 @@ fs.mkdirSync(path.join(DEPLOY_DIR, 'frontend'), { recursive: true });
 copyDir(path.join(__dirname, '..', 'frontend', 'dist'), path.join(DEPLOY_DIR, 'frontend', 'dist'));
 
 // Copy package.json + package-lock.json (production only)
-const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'backend', 'package.json'), 'utf-8'));
 const prodPkg = {
   name: pkg.name,
   version: pkg.version,
@@ -61,9 +61,9 @@ const prodPkg = {
 };
 fs.writeFileSync(path.join(DEPLOY_DIR, 'package.json'), JSON.stringify(prodPkg, null, 2));
 
-if (fs.existsSync(path.join(__dirname, '..', 'package-lock.json'))) {
+if (fs.existsSync(path.join(__dirname, '..', 'backend', 'package-lock.json'))) {
   fs.copyFileSync(
-    path.join(__dirname, '..', 'package-lock.json'),
+    path.join(__dirname, '..', 'backend', 'package-lock.json'),
     path.join(DEPLOY_DIR, 'package-lock.json')
   );
 }
@@ -83,7 +83,7 @@ if not exist node_modules (
   echo.
 )
 
-if not exist dev.db (
+if not exist backend\\Database\\dev.db (
   echo Creating sample data...
   node backend/dist/seed.js
   echo.
@@ -107,7 +107,7 @@ if [ ! -d "node_modules" ]; then
   echo
 fi
 
-if [ ! -f "dev.db" ]; then
+if [ ! -f "backend/Database/dev.db" ]; then
   echo "Creating sample data..."
   node backend/dist/seed.js
   echo

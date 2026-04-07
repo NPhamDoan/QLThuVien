@@ -3,19 +3,19 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/backend'],
+  roots: ['<rootDir>'],
   testMatch: [
     '**/*.test.ts',
     '**/*.property.test.ts',
   ],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/backend/$1',
+    '^@/(.*)$': '<rootDir>/$1',
   },
   collectCoverageFrom: [
-    'backend/**/*.ts',
-    '!backend/**/*.test.ts',
-    '!backend/**/*.property.test.ts',
-    '!backend/index.ts',
+    '**/*.ts',
+    '!**/*.test.ts',
+    '!**/*.property.test.ts',
+    '!index.ts',
   ],
   coverageDirectory: 'coverage',
   coverageThreshold: {
