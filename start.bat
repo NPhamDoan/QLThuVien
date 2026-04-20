@@ -2,6 +2,16 @@
 echo === Thu Vien Management System ===
 echo.
 
-echo [DEV] Starting backend + frontend...
+echo [1/3] Installing backend dependencies...
 cd backend
+call npm install
+
+echo.
+echo [2/3] Installing frontend dependencies...
+cd ..\frontend
+call npm install
+
+echo.
+echo [3/3] Starting backend + frontend...
+cd ..\backend
 npm run dev:all

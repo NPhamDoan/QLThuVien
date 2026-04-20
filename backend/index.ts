@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { initializeDatabase } from './database';
+import { seedDatabase } from './seed';
 import { TaiKhoanController } from './controllers/TaiKhoanController';
 import { DocGiaController } from './controllers/DocGiaController';
 import { SachController } from './controllers/SachController';
@@ -19,8 +20,13 @@ const app = express();
 app.use(express.json());
 app.use(requestLogger);
 
-// Initialize database and controllers
+// Initialize database and auto-seed if empty
 const db = initializeDatabase();
+const row = db.prepare('SELECT COUNT(*) as count FROM TaiKhoan').get() as { count: number };
+if (row.count === 0) {
+  console.log('Database is empty, seeding data...');
+  seedDatabase(db);
+}
 const taiKhoanController = new TaiKhoanController(db);
 const docGiaController = new DocGiaController(db);
 const sachController = new SachController(db);

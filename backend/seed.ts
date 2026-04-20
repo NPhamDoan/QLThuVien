@@ -1,9 +1,8 @@
 import { initializeDatabase } from './database';
 import bcrypt from 'bcrypt';
+import Database from 'better-sqlite3';
 
-async function seed() {
-  const db = initializeDatabase('./Database/dev.db');
-
+export function seedDatabase(db: Database.Database) {
   // Clear existing data (order matters for FK)
   db.exec('DELETE FROM PhieuMuon');
   db.exec('DELETE FROM Sach');
@@ -11,7 +10,7 @@ async function seed() {
   db.exec('DELETE FROM TaiKhoan');
 
   // === Tài khoản ===
-  const hashedPass = await bcrypt.hash('123456', 10);
+  const hashedPass = bcrypt.hashSync('123456', 10);
 
   db.prepare(`
     INSERT INTO TaiKhoan (maTaiKhoan, tenDangNhap, matKhau, vaiTro, trangThai)
@@ -145,8 +144,11 @@ async function seed() {
   console.log('Độc giả: DG001 - DG022 (22 người, 2+ pages)');
   console.log('Sách: S001 - S025 (25 cuốn, 2+ pages)');
   console.log('Phiếu mượn: PM001-PM005');
-
-  db.close();
 }
 
-seed().catch(console.error);
+// Run standalone: npx ts-node seed.ts
+if (require.main === module) {
+  const db = initializeDatabase('./Database/dev.db');
+  seedDatabase(db);
+  db.close();
+}
