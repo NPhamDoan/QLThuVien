@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Typography, Table, Button, Modal, Form, Input, DatePicker, Alert, Popconfirm, Space } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, DatePicker, Alert, Popconfirm, Space, Tag, Row, Col } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { readerApi } from '../services/api';
 import axios from 'axios';
 import dayjs from 'dayjs';
-
-const { Title } = Typography;
 
 interface ReaderRecord {
   maDocGia: string;
@@ -16,9 +14,15 @@ interface ReaderRecord {
 }
 
 export default function ReadersPage() {
-  const [readers, setReaders] = useState<ReaderRecord[]>([]);
+  const [allReaders, setAllReaders] = useState<ReaderRecord[]>([]);
+  const [displayReaders, setDisplayReaders] = useState<ReaderRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Search
+  const [keyword, setKeyword] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingReader, setEditingReader] = useState<ReaderRecord | null>(null);
@@ -31,7 +35,9 @@ export default function ReadersPage() {
     setError(null);
     try {
       const { data } = await readerApi.list();
-      setReaders(Array.isArray(data) ? data : []);
+      const readers = Array.isArray(data) ? data : [];
+      setAllReaders(readers);
+      if (!isSearching) setDisplayReaders(readers);
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.error || 'Lỗi khi tải danh sách độc giả');
@@ -41,9 +47,33 @@ export default function ReadersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSearching]);
 
   useEffect(() => { fetchReaders(); }, [fetchReaders]);
+
+  const handleSearch = async () => {
+    if (!keyword.trim()) {
+      setIsSearching(false);
+      setDisplayReaders(allReaders);
+      return;
+    }
+    setSearchLoading(true);
+    setIsSearching(true);
+    try {
+      const { data } = await readerApi.search(keyword.trim());
+      setDisplayReaders(Array.isArray(data) ? data : []);
+    } catch {
+      setDisplayReaders([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setKeyword('');
+    setIsSearching(false);
+    setDisplayReaders(allReaders);
+  };
 
   const openAddModal = () => {
     setEditingReader(null);
@@ -85,6 +115,8 @@ export default function ReadersPage() {
 
       setModalOpen(false);
       form.resetFields();
+      setIsSearching(false);
+      setKeyword('');
       fetchReaders();
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -143,23 +175,48 @@ export default function ReadersPage() {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={2} style={{ margin: 0 }}>Quản lý độc giả</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAddModal}>
-          Thêm độc giả
-        </Button>
-      </div>
+    <div>
+      {/* Header: Search + Add */}
+      <Row gutter={16} align="middle" style={{ marginBottom: 20 }}>
+        <Col flex="auto">
+          <Space.Compact style={{ width: '100%' }}>
+            <Input
+              prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
+              placeholder="Tìm theo mã, tên, email hoặc SĐT..."
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+              onClear={handleClearSearch}
+              style={{ maxWidth: 400 }}
+            />
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} loading={searchLoading}>
+              Tìm
+            </Button>
+          </Space.Compact>
+        </Col>
+        <Col>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openAddModal}>Thêm độc giả</Button>
+        </Col>
+      </Row>
+
+      {isSearching && (
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Tag color="blue">Kết quả tìm kiếm: {displayReaders.length} độc giả</Tag>
+          <Button type="link" size="small" onClick={handleClearSearch}>Xóa bộ lọc</Button>
+        </div>
+      )}
 
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
 
       <Table
         columns={columns}
-        dataSource={readers}
+        dataSource={displayReaders}
         rowKey="maDocGia"
-        loading={loading}
-        locale={{ emptyText: 'Chưa có độc giả nào' }}
+        loading={loading || searchLoading}
+        locale={{ emptyText: isSearching ? 'Không tìm thấy độc giả phù hợp' : 'Chưa có độc giả nào' }}
         pagination={{ pageSize: 10 }}
+        size="small"
       />
 
       <Modal

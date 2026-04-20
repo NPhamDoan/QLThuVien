@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Card, Input, Button, Descriptions, Alert, Divider, Typography } from 'antd';
-import { SearchOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Input, Button, Alert, Typography, Table, Tag, Select, Space } from 'antd';
+import { SearchOutlined, CheckCircleOutlined, ReloadOutlined, CalendarOutlined } from '@ant-design/icons';
 import { loanApi } from '../services/api';
 import axios from 'axios';
 
-const { Title } = Typography;
+const { Text } = Typography;
 
 interface LoanInfo {
   maPhieu: string;
@@ -13,146 +13,233 @@ interface LoanInfo {
   ngayMuon: string;
   hanTra: string;
   trangThai: string;
+  tenDocGia?: string;
+  tenSach?: string;
 }
 
-export default function ExtendPage() {
-  const [maPhieu, setMaPhieu] = useState('');
+type SearchType = 'all' | 'docgia' | 'sach' | 'maphieu';
 
-  const [loan, setLoan] = useState<LoanInfo | null>(null);
+export default function ExtendPage() {
+  const [keyword, setKeyword] = useState('');
+  const [searchType, setSearchType] = useState<SearchType>('all');
+  const [loans, setLoans] = useState<LoanInfo[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searched, setSearched] = useState(false);
 
+  const [selectedLoan, setSelectedLoan] = useState<LoanInfo | null>(null);
   const [extendedLoan, setExtendedLoan] = useState<LoanInfo | null>(null);
   const [extendLoading, setExtendLoading] = useState(false);
   const [extendError, setExtendError] = useState<string | null>(null);
 
-  const handleSearch = async () => {
-    if (!maPhieu.trim()) return;
+  const doSearch = async (search?: string, type?: string) => {
     setSearchError(null);
-    setLoan(null);
+    setLoans([]);
+    setSelectedLoan(null);
     setExtendedLoan(null);
-    setExtendError(null);
     setSearchLoading(true);
+    setSearched(true);
     try {
-      const { data } = await loanApi.getById(maPhieu.trim());
-      setLoan(data);
+      const { data } = await loanApi.list(search, type !== 'all' ? type : undefined);
+      setLoans(Array.isArray(data) ? data : []);
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setSearchError(err.response?.data?.error || 'Không tìm thấy phiếu mượn');
-      } else {
-        setSearchError('Lỗi khi tìm phiếu mượn');
-      }
+      setSearchError(axios.isAxiosError(err) ? (err.response?.data?.error || 'Lỗi khi tìm kiếm') : 'Lỗi khi tìm kiếm');
     } finally {
       setSearchLoading(false);
     }
   };
 
+  const handleSearch = () => doSearch(keyword.trim() || undefined, searchType);
+  const handleShowAll = () => { setKeyword(''); setSearchType('all'); doSearch(); };
+
   const handleExtend = async () => {
-    if (!loan) return;
+    if (!selectedLoan) return;
     setExtendError(null);
-    setExtendedLoan(null);
     setExtendLoading(true);
     try {
-      const { data } = await loanApi.extend(loan.maPhieu);
+      const { data } = await loanApi.extend(selectedLoan.maPhieu);
       setExtendedLoan(data);
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setExtendError(err.response?.data?.error || 'Lỗi khi gia hạn');
-      } else {
-        setExtendError('Lỗi khi gia hạn');
-      }
+      setExtendError(axios.isAxiosError(err) ? (err.response?.data?.error || 'Lỗi khi gia hạn') : 'Lỗi khi gia hạn');
     } finally {
       setExtendLoading(false);
     }
   };
 
-  const trangThaiLabel: Record<string, string> = {
-    DANG_MUON: 'Đang mượn',
-    DA_TRA: 'Đã trả',
+  const handleReset = () => {
+    setKeyword(''); setSearchType('all'); setLoans([]); setSearched(false);
+    setSelectedLoan(null); setExtendedLoan(null); setExtendError(null); setSearchError(null);
   };
 
-  return (
-    <div style={{ padding: 24, maxWidth: 700, margin: '0 auto' }}>
-      <Title level={2}>Gia hạn mượn sách</Title>
+  const isOverdue = (hanTra: string) => new Date() > new Date(hanTra);
 
-      {/* Search loan */}
-      <Card title="Tìm phiếu mượn" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <Input
-            placeholder="Nhập mã phiếu mượn"
-            value={maPhieu}
-            onChange={(e) => setMaPhieu(e.target.value)}
-            onPressEnter={handleSearch}
-            disabled={!!extendedLoan}
-          />
-          <Button
-            type="primary"
-            icon={<SearchOutlined />}
-            onClick={handleSearch}
-            loading={searchLoading}
-            disabled={!maPhieu.trim() || !!extendedLoan}
-          >
-            Tìm kiếm
-          </Button>
+  const columns = [
+    { title: 'Mã phiếu', dataIndex: 'maPhieu', key: 'maPhieu', width: 130 },
+    {
+      title: 'Độc giả', key: 'docgia', width: 160,
+      render: (_: unknown, r: LoanInfo) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{r.tenDocGia || r.maDocGia}</div>
+          {r.tenDocGia && <div style={{ fontSize: 12, color: '#94A3B8' }}>{r.maDocGia}</div>}
         </div>
-        {searchError && <Alert message={searchError} type="error" showIcon />}
-      </Card>
+      ),
+    },
+    {
+      title: 'Sách', key: 'sach', width: 180,
+      render: (_: unknown, r: LoanInfo) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{r.tenSach || r.maSach}</div>
+          {r.tenSach && <div style={{ fontSize: 12, color: '#94A3B8' }}>{r.maSach}</div>}
+        </div>
+      ),
+    },
+    {
+      title: 'Ngày mượn', dataIndex: 'ngayMuon', key: 'ngayMuon', width: 110,
+      render: (v: string) => v?.split('T')[0],
+    },
+    {
+      title: 'Hạn trả', dataIndex: 'hanTra', key: 'hanTra', width: 110,
+      render: (v: string) => <Text type={isOverdue(v) ? 'danger' : undefined} strong={isOverdue(v)}>{v?.split('T')[0]}</Text>,
+    },
+    {
+      title: 'Trạng thái', key: 'status', width: 100,
+      render: (_: unknown, r: LoanInfo) =>
+        isOverdue(r.hanTra) ? <Tag color="red">Quá hạn</Tag> : <Tag color="green">Trong hạn</Tag>,
+    },
+    {
+      title: '', key: 'action', width: 110,
+      render: (_: unknown, r: LoanInfo) => (
+        <Button type="primary" size="small" onClick={() => setSelectedLoan(r)} style={{ borderRadius: 8 }}>
+          Chọn gia hạn
+        </Button>
+      ),
+    },
+  ];
 
-      {/* Loan info */}
-      {loan && !extendedLoan && (
-        <>
-          <Card title="Thông tin phiếu mượn" style={{ marginBottom: 16 }}>
-            <Descriptions bordered size="small" column={1}>
-              <Descriptions.Item label="Mã phiếu">{loan.maPhieu}</Descriptions.Item>
-              <Descriptions.Item label="Mã độc giả">{loan.maDocGia}</Descriptions.Item>
-              <Descriptions.Item label="Mã sách">{loan.maSach}</Descriptions.Item>
-              <Descriptions.Item label="Ngày mượn">{loan.ngayMuon}</Descriptions.Item>
-              <Descriptions.Item label="Hạn trả">{loan.hanTra}</Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">
-                {trangThaiLabel[loan.trangThai] || loan.trangThai}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 22, color: '#1E293B', fontWeight: 700 }}>Gia hạn mượn sách</h2>
+          <Text style={{ color: '#94A3B8', fontSize: 13 }}>Tìm phiếu mượn và gia hạn thêm 7 ngày</Text>
+        </div>
+        {(searched || selectedLoan) && (
+          <Button icon={<ReloadOutlined />} onClick={handleReset}>Làm lại</Button>
+        )}
+      </div>
 
-          <Divider />
-
-          <Card>
-            {extendError && <Alert message={extendError} type="error" showIcon style={{ marginBottom: 12 }} />}
-            {loan.trangThai === 'DA_TRA' ? (
-              <Alert message="Phiếu mượn đã hoàn tất, không thể gia hạn" type="warning" showIcon />
-            ) : (
-              <Button
-                type="primary"
-                icon={<CalendarOutlined />}
-                size="large"
-                block
-                onClick={handleExtend}
-                loading={extendLoading}
-              >
-                Gia hạn thêm 7 ngày
+      {/* Search */}
+      {!selectedLoan && !extendedLoan && (
+        <div style={{ background: '#F8FAFC', borderRadius: 12, padding: 20, border: '1px solid #E2E8F0', marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Space.Compact style={{ flex: 1 }}>
+              <Select
+                value={searchType}
+                onChange={(v) => setSearchType(v)}
+                style={{ width: 150 }}
+                options={[
+                  { value: 'all', label: 'Tất cả' },
+                  { value: 'docgia', label: 'Tên độc giả' },
+                  { value: 'sach', label: 'Tên sách' },
+                  { value: 'maphieu', label: 'Mã phiếu' },
+                ]}
+              />
+              <Input
+                prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
+                placeholder={
+                  searchType === 'docgia' ? 'Nhập tên độc giả...' :
+                  searchType === 'sach' ? 'Nhập tên sách...' :
+                  searchType === 'maphieu' ? 'Nhập mã phiếu...' :
+                  'Nhập từ khóa tìm kiếm...'
+                }
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onPressEnter={handleSearch}
+                allowClear
+              />
+              <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} loading={searchLoading}>
+                Tìm
               </Button>
-            )}
-          </Card>
-        </>
+            </Space.Compact>
+            <Button onClick={handleShowAll}>Xem tất cả</Button>
+          </div>
+
+          {searchError && <Alert message={searchError} type="error" showIcon style={{ marginTop: 12 }} />}
+
+          {searched && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ marginBottom: 8, fontSize: 13, color: '#64748B' }}>
+                {loans.length > 0
+                  ? `Tìm thấy ${loans.length} phiếu đang mượn${keyword ? ` cho "${keyword}"` : ''}`
+                  : 'Không tìm thấy phiếu mượn nào'}
+              </div>
+              <Table
+                columns={columns}
+                dataSource={loans}
+                rowKey="maPhieu"
+                size="small"
+                pagination={{ pageSize: 6 }}
+                locale={{ emptyText: 'Không có phiếu mượn nào' }}
+              />
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Extended result */}
-      {extendedLoan && (
-        <Card>
-          <Alert
-            message="Gia hạn thành công!"
-            description={
-              <Descriptions bordered size="small" column={1} style={{ marginTop: 8 }}>
-                <Descriptions.Item label="Mã phiếu">{extendedLoan.maPhieu}</Descriptions.Item>
-                <Descriptions.Item label="Hạn trả cũ">{loan?.hanTra}</Descriptions.Item>
-                <Descriptions.Item label="Hạn trả mới">{extendedLoan.hanTra}</Descriptions.Item>
-              </Descriptions>
-            }
-            type="success"
-            showIcon
-          />
-        </Card>
+      {/* Selected loan — confirm extend */}
+      {selectedLoan && !extendedLoan && (
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #E2E8F0' }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#1E293B', marginBottom: 16 }}>Xác nhận gia hạn</div>
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px 24px',
+            background: '#F8FAFC', borderRadius: 10, padding: 20, border: '1px solid #E2E8F0', marginBottom: 20,
+          }}>
+            <InfoItem label="Mã phiếu" value={selectedLoan.maPhieu} />
+            <InfoItem label="Độc giả" value={selectedLoan.tenDocGia || selectedLoan.maDocGia} highlight />
+            <InfoItem label="Sách" value={selectedLoan.tenSach || selectedLoan.maSach} highlight />
+            <InfoItem label="Ngày mượn" value={selectedLoan.ngayMuon?.split('T')[0]} />
+            <InfoItem label="Hạn trả hiện tại" value={selectedLoan.hanTra?.split('T')[0]} />
+            <InfoItem label="Trạng thái" value={
+              isOverdue(selectedLoan.hanTra) ? <Tag color="red">Quá hạn</Tag> : <Tag color="green">Trong hạn</Tag>
+            } />
+          </div>
+
+          {extendError && <Alert message={extendError} type="error" showIcon style={{ marginBottom: 16 }} />}
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Button onClick={() => setSelectedLoan(null)} style={{ flex: 1, height: 44 }}>Quay lại danh sách</Button>
+            <Button type="primary" icon={<CalendarOutlined />} onClick={handleExtend} loading={extendLoading} style={{ flex: 2, height: 44, fontWeight: 600 }}>
+              Gia hạn thêm 7 ngày
+            </Button>
+          </div>
+        </div>
       )}
+
+      {/* Extend result */}
+      {extendedLoan && (
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #E2E8F0' }}>
+          <Alert message="Gia hạn thành công!" type="success" showIcon icon={<CheckCircleOutlined />} style={{ marginBottom: 20 }} />
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px 24px',
+            background: '#F8FAFC', borderRadius: 10, padding: 20, border: '1px solid #E2E8F0', marginBottom: 20,
+          }}>
+            <InfoItem label="Mã phiếu" value={extendedLoan.maPhieu} />
+            <InfoItem label="Hạn trả cũ" value={selectedLoan?.hanTra?.split('T')[0] || ''} />
+            <InfoItem label="Hạn trả mới" value={extendedLoan.hanTra?.split('T')[0]} highlight />
+          </div>
+          <Button icon={<ReloadOutlined />} onClick={handleReset} block style={{ height: 42 }}>Gia hạn phiếu khác</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoItem({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 14, fontWeight: highlight ? 600 : 400, color: '#1E293B' }}>{value}</div>
     </div>
   );
 }

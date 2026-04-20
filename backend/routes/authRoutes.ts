@@ -1,7 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { TaiKhoanController } from '../controllers/TaiKhoanController';
-import { addSession, removeSession } from '../middleware/auth';
-import { TrangThaiTaiKhoan } from '../types';
 
 export function createAuthRoutes(controller: TaiKhoanController): Router {
   const router = Router();
@@ -16,12 +14,6 @@ export function createAuthRoutes(controller: TaiKhoanController): Router {
       }
       const result = await controller.dangNhap(tenDangNhap, matKhau);
       if (result.success && result.taiKhoan) {
-        addSession({
-          maTaiKhoan: result.taiKhoan.maTaiKhoan,
-          tenDangNhap: result.taiKhoan.tenDangNhap,
-          vaiTro: result.taiKhoan.vaiTro,
-          trangThai: result.taiKhoan.trangThai as TrangThaiTaiKhoan,
-        });
         res.json(result);
       } else {
         res.status(401).json(result);
@@ -39,7 +31,6 @@ export function createAuthRoutes(controller: TaiKhoanController): Router {
         res.status(400).json({ error: 'maTaiKhoan là bắt buộc' });
         return;
       }
-      removeSession(maTaiKhoan);
       await controller.dangXuat(maTaiKhoan);
       res.json({ success: true });
     } catch (error) {

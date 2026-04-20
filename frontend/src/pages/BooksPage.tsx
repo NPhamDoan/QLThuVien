@@ -95,7 +95,7 @@ export default function BooksPage() {
   const openEditModal = (book: BookRecord) => {
     setEditingBook(book);
     setModalError(null);
-    form.setFieldsValue({ tieuDe: book.tieuDe, tacGia: book.tacGia });
+    form.setFieldsValue({ tieuDe: book.tieuDe, tacGia: book.tacGia, tinhTrang: book.tinhTrang });
     setModalOpen(true);
   };
 
@@ -105,7 +105,7 @@ export default function BooksPage() {
       setModalLoading(true);
       setModalError(null);
       if (editingBook) {
-        await bookApi.update(editingBook.maSach, { tieuDe: values.tieuDe, tacGia: values.tacGia });
+        await bookApi.update(editingBook.maSach, { tieuDe: values.tieuDe, tacGia: values.tacGia, tinhTrang: values.tinhTrang });
       } else {
         await bookApi.create({ tieuDe: values.tieuDe, tacGia: values.tacGia });
       }
@@ -233,6 +233,18 @@ export default function BooksPage() {
           <Form.Item name="tacGia" label="Tác giả" rules={[{ required: true, message: 'Vui lòng nhập tên tác giả' }]}>
             <Input placeholder="Nhập tên tác giả" />
           </Form.Item>
+          {editingBook && (
+            <Form.Item name="tinhTrang" label="Tình trạng">
+              <Select
+                options={[
+                  { value: 'SAN_SANG', label: 'Sẵn sàng' },
+                  { value: 'DA_MUON', label: 'Đã mượn', disabled: true },
+                  { value: 'BAO_TRI', label: 'Bảo trì' },
+                  { value: 'MAT', label: 'Mất' },
+                ]}
+              />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
     </div>
